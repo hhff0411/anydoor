@@ -13,12 +13,14 @@ const source = fs.readFileSync(tplPath);//readFileSync  同步方法  读出来�
 const template = Handlebars.compile(source.toString());
 const range = require('./rang.js');
 
-const config = require('../config/defaultConfig.js')
+// const config = require('../config/defaultConfig.js')  //度不到用户的自定义
 const mime = require('./mime.js');//文件后缀名
 
 const compress = require('./compress.js');//压缩
 
-module.exports = async function (req, res, filePath){
+const isFresh = require('./cache.js');//缓存
+
+module.exports = async function (req, res, filePath, config){
 
 	try{
 		const stats = await stat(filePath);
@@ -26,6 +28,14 @@ module.exports = async function (req, res, filePath){
 			const contentType = mime(filePath);
 			res.statusCode = 200;
 			res.setHeader('Content-Type', contentType);
+
+
+			if(isFresh(stats, req, res)){
+				res.statusCode = 304;
+				res.end();
+				return;
+			}
+
 			let rs;
 			const {code, start, end} = range(stats.size, req, res);
 			if(code === 200){
